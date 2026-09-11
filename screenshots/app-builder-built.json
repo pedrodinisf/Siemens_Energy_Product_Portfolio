@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Fieldbook",
+      "hasCanvas": false,
+      "bodyTextLen": 6329,
+      "bodyTextHash": "f296402e733c2649be3e89433edbf86263fbe103806b21b0e6c0f14445169f13",
+      "bodyTextPrefix": "Fieldbook SIEMENS ENERGY LIBRARY Catalog Files Papers PRODUCT LI",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Fieldbook",
+      "hasCanvas": false,
+      "bodyTextLen": 6306,
+      "bodyTextHash": "6bd4bddae5757d04f0e7f682046f1adcffb75ed03fed4aa19c43c40b4da93dbf",
+      "bodyTextPrefix": "Fieldbook Catalog Files Papers PRODUCT LIBRARY The Siemens Energ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
