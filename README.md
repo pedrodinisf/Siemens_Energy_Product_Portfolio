@@ -32,8 +32,11 @@ Scraped on 2026-09-10 from the public
   larger ones link to the Siemens Energy asset CDN.
 - The scrape is preserved in [`data/siemens-energy/`](data/siemens-energy/) —
   one folder per page with a `README.md`, `product.json`, hero image, and
-  `files/`. The app reads the bundled
-  [`src/data/catalog.json`](src/data/catalog.json) index.
+  `files/`. The app reads two generated files: `src/data/catalog-index.json`
+  (metadata, bundled with the app) and `src/data/catalog-detail.json` (body and
+  FAQ text, loaded on demand by item/family pages and full-text search). Run
+  `npm run catalog:split` after re-scraping to regenerate them from
+  `src/data/catalog.json`.
 - Scraper: [`scripts/crawl-siemens-energy.py`](scripts/crawl-siemens-energy.py)
   plus [`scripts/catalog_images.py`](scripts/catalog_images.py). Kept for
   transparency; not required to run the app.
@@ -107,3 +110,6 @@ Deployment happens automatically: pushing to `main` runs
   additional static target selected only by `--mode pages`.
 - On-host PWA/branding chrome served by the original platform runtime (install
   page, extension script) is not part of the static Pages build.
+- Fonts (Barlow Condensed, Source Sans 3 — SIL Open Font License) are
+  self-hosted from `src/assets/fonts/`, so the site makes no third-party font
+  requests.
