@@ -8,7 +8,7 @@ import {
   appNameFromHost,
   createHeadInjector,
   grokXCreatorHeadTags,
-  injectGrokPwaHead,
+  injectGrokPwaHead as injectGrokPwaHeadRaw,
   isDocumentPath,
   isInstallQuery,
   publicAppHost,
@@ -20,6 +20,14 @@ import {
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+// Unit tests exercise the default (no brand config) behavior, but
+// snapshotOgIdentity falls back to process.cwd(), which in this repo contains
+// src/lib/og/site.json. Pin the implicit cwd to an empty fixture so the suite
+// is hermetic; an explicit cwd/site in a test's ctx still wins.
+const NO_SITE_CWD = mkdtempSync(join(tmpdir(), "grok-pwa-no-site-"));
+const injectGrokPwaHead = (html, ctx = {}) =>
+  injectGrokPwaHeadRaw(html, { cwd: NO_SITE_CWD, ...ctx });
 
 test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
@@ -370,7 +378,7 @@ test("injects into documents with no head element", () => {
 });
 
 test("streaming injector matches </HEAD> case-insensitively", () => {
-  const injector = createHeadInjector({ appName: "Wild Race" });
+  const injector = createHeadInjector({ appName: "Wild Race", cwd: NO_SITE_CWD });
   const chunks = [
     ...injector.push("<html><HEAD><title>x</title></HE"),
     ...injector.push("AD><body>hello</body></html>"),
@@ -400,7 +408,7 @@ test("uses the app name in the injected title tag", () => {
 });
 
 test("streaming injector handles </head> split across chunks", () => {
-  const injector = createHeadInjector({ appName: "Wild Race" });
+  const injector = createHeadInjector({ appName: "Wild Race", cwd: NO_SITE_CWD });
   const chunks = [
     ...injector.push("<html><head><title>x</title></he"),
     ...injector.push("ad><body>hello</body></html>"),
@@ -485,7 +493,9 @@ test("renders the manifest with the per-app name", () => {
 // fail silently (published apps would just render the app for ?install=1).
 test("vite config keeps the nitro serverDir wiring", () => {
   const viteConfig = readFileSync(join(TEMPLATE_ROOT, "vite.config.ts"), "utf8");
-  assert.match(viteConfig, /serverDir:\s*"\.\/server"/);
+  // The literal stays wired for deploys; the Pages build disables the
+  // static-host middleware it cannot run.
+  assert.match(viteConfig, /serverDir:\s*(?:pagesMode \? false : )?"\.\/server"/);
   assert.match(viteConfig, /grokPwaPlugin\(\)/);
 });
 
