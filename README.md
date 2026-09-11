@@ -88,10 +88,13 @@ npm run build:pages    # static GitHub Pages build -> .pages/output/static
 npm run preview        # serve the default build on 127.0.0.1:8081
 ```
 
-The Pages build runs in SPA mode with the `/Siemens_Energy_Product_Portfolio/`
-base path. `scripts/pages-postbuild.mjs` turns the generated shell into
-`index.html` and `404.html` so deep links work on Pages (which has no rewrite
-rules), reconciles the stylesheet link, and writes a static PWA manifest.
+The Pages build prerenders every route (244 items, 67 families, plus the
+catalog, files, and papers views) into real HTML under
+`/Siemens_Energy_Product_Portfolio/`, so deep links return 200 with readable
+content and per-page titles. `scripts/pages-postbuild.mjs` then reconciles the
+stylesheet links, adds Open Graph/Twitter share meta, writes a static PWA
+manifest, and copies the home page to `404.html` so unknown URLs still boot the
+client router.
 
 Deployment happens automatically: pushing to `main` runs
 [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)

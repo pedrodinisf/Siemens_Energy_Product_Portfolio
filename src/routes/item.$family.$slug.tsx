@@ -5,9 +5,20 @@ import { ProductCard } from "@/components/product-card";
 import { CatalogImage } from "@/components/catalog-image";
 import { SpecTable } from "@/components/spec-table";
 import { kindLabel } from "@/lib/catalog";
-import { useItem } from "@/lib/catalog-store";
+import { findItem, useItem } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/item/$family/$slug")({
+  head: ({ params }) => {
+    const item = findItem(params.family, params.slug);
+    return {
+      meta: [
+        { title: item ? `${item.title} · Fieldbook` : "Fieldbook" },
+        ...(item?.description
+          ? [{ name: "description", content: item.description }]
+          : []),
+      ],
+    };
+  },
   component: ItemPage,
 });
 

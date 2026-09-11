@@ -1,5 +1,6 @@
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -142,13 +143,41 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+/**
+ * Every route of the static GitHub Pages build, enumerated from the bundled
+ * catalog. Prerendering them produces real HTML per URL — deep links get a 200
+ * and readable content without JavaScript — instead of one SPA shell plus a
+ * 404 fallback.
+ */
+function pagesPrerenderOptions() {
+  const catalogPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "src/data/catalog.json",
+  );
+  const catalog = JSON.parse(readFileSync(catalogPath, "utf8")) as {
+    families: { id: string }[];
+    items: { family: string; slug: string }[];
+  };
+  const paths = [
+    "/",
+    "/downloads",
+    "/papers",
+    ...catalog.families.map((family) => `/family/${family.id}`),
+    ...catalog.items.map((item) => `/item/${item.family}/${item.slug}`),
+  ];
+  return {
+    prerender: { enabled: true, crawlLinks: false, failOnError: true },
+    pages: paths.map((path) => ({ path })),
+  };
+}
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview, mode }) => {
   // `vite build --mode pages` targets a GitHub Pages project site, which lives
-  // at /<repo>/ — every other target is root-served. Only this mode enables SPA
-  // mode, sets the base path and redirects the Nitro output to .pages/;
+  // at /<repo>/ — every other target is root-served. Only this mode prerenders
+  // every route, sets the base path and redirects the Nitro output to .pages/;
   // `npm run dev` / `npm run build` keep their platform contract.
   const pagesMode = mode === "pages";
   const base = pagesMode ? "/Siemens_Energy_Product_Portfolio/" : "/";
@@ -175,7 +204,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
       // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
       grokPwaPlugin(),
       tailwindcss(),
-      tanstackStart(pagesMode ? { spa: { enabled: true } } : {}),
+      tanstackStart(pagesMode ? pagesPrerenderOptions() : {}),
       ...(command === "build" || isPreview
         ? [
             nitro({

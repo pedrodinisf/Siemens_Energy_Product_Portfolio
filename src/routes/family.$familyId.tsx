@@ -2,9 +2,23 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ProductCard } from "@/components/product-card";
 import { FileRow } from "@/components/file-row";
 import { prettyFamily } from "@/lib/catalog";
-import { useCatalog } from "@/lib/catalog-store";
+import { findFamily, findItem, useCatalog } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/family/$familyId")({
+  head: ({ params }) => {
+    const family = findFamily(params.familyId);
+    const overview = findItem(params.familyId, "_overview");
+    const label = family
+      ? prettyFamily(family)
+      : params.familyId.replace(/-/g, " ");
+    const description = overview?.description || family?.description;
+    return {
+      meta: [
+        { title: `${label} · Fieldbook` },
+        ...(description ? [{ name: "description", content: description }] : []),
+      ],
+    };
+  },
   component: FamilyPage,
 });
 

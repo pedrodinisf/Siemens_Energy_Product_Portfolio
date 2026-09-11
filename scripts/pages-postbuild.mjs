@@ -2,76 +2,124 @@
 /**
  * Turn the `--mode pages` Nitro build into a GitHub Pages artifact.
  *
- * SPA mode only emits the router shell (`_shell.html`); Pages has no rewrite
- * rules, so the shell must also be served for `/` and for every 404 (deep
- * links like /item/gas-turbines/sgt-800). This script:
+ * Every route is prerendered to real HTML at its own URL; this script makes
+ * the output Pages-ready:
  *
- *   1. copies `_shell.html` to `index.html` and `404.html`
- *   2. re-bases any root-absolute URLs the platform head injector added
+ *   1. re-bases any root-absolute URLs the platform head injector added
  *      (e.g. /__grok/manifest.webmanifest) under the Pages project path
- *   3. reconciles the shell's CSS link with the emitted asset and writes a
- *      static PWA manifest the shell links to
+ *   2. reconciles each page's CSS link with the asset Vite actually emitted
+ *   3. injects per-page Open Graph / Twitter share meta (title and description
+ *      are read back from the prerendered document)
+ *   4. writes `404.html` as a copy of the home page so unknown URLs still boot
+ *      the client router, plus the static PWA manifest and `.nojekyll`
  *
  * Runs after `vite build --mode pages`; see .github/workflows/deploy-pages.yml.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUBLIC_DIR = join(ROOT, ".pages", "output", "static");
 const BASE = "/Siemens_Energy_Product_Portfolio/";
+const SITE_URL = `https://pedrodinisf.github.io${BASE}`;
 const APP_NAME = "Fieldbook";
 const THEME = "#081018";
+const DEFAULT_DESCRIPTION =
+  "Searchable library of Siemens Energy products, specifications, brochures, and white papers.";
 
 function fail(message) {
   console.error(`[pages-postbuild] ${message}`);
   process.exit(1);
 }
 
+function walk(dir, out = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) walk(path, out);
+    else if (entry.name.endsWith(".html")) out.push(path);
+  }
+  return out;
+}
+
 if (!existsSync(PUBLIC_DIR)) {
   fail(`missing build output at ${PUBLIC_DIR} — run \`vite build --mode pages\` first.`);
 }
 
-const shellPath = ["_shell.html", "index.html"]
-  .map((name) => join(PUBLIC_DIR, name))
-  .find((p) => existsSync(p));
-if (!shellPath) {
-  fail(`neither _shell.html nor index.html found in ${PUBLIC_DIR}.`);
+const indexPath = join(PUBLIC_DIR, "index.html");
+if (!existsSync(indexPath)) {
+  fail(`no index.html in ${PUBLIC_DIR} — prerendering did not produce the home route.`);
 }
 
-const shell = readFileSync(shellPath, "utf8");
-
-// Root-absolute URLs the Grok head injector adds are host-relative to "/";
-// under the Pages project path they must carry the base prefix. Vite-processed
-// URLs already start with BASE, so skip them to avoid double-prefixing.
-let rebased = shell.replace(/(href|src|content)="(\/[^"]*)"/g, (match, attr, url) => {
-  if (url.startsWith("//") || url.startsWith(BASE)) return match;
-  return `${attr}="${BASE}${url.slice(1)}"`;
-});
-
-// The prerendered shell can carry the SSR build's CSS filename
-// (`assets/styles-<hash>.css`) while the emitted client CSS landed under a
-// different hash — the client JS then loads the right one. Point the shell at
-// the file that actually exists so the stale link doesn't 404 on first paint.
 const assetsDir = join(PUBLIC_DIR, "assets");
 const styleFiles = existsSync(assetsDir)
   ? readdirSync(assetsDir).filter((name) => /^styles-.*\.css$/.test(name))
   : [];
-if (styleFiles.length === 1) {
-  rebased = rebased.replace(
-    /href="[^"]*?\/assets\/styles-[^"]*?\.css"/g,
-    `href="${BASE}assets/${styleFiles[0]}"`,
-  );
-} else {
-  console.warn(
-    `[pages-postbuild] expected exactly one assets/styles-*.css, found ${styleFiles.length}; leaving CSS links untouched.`,
-  );
+if (styleFiles.length !== 1) {
+  fail(`expected exactly one assets/styles-*.css, found ${styleFiles.length}.`);
+}
+const stylesheet = `${BASE}assets/${styleFiles[0]}`;
+
+/** URL path the file will be served at, for og:url. */
+function urlPathFor(file) {
+  const rel = relative(PUBLIC_DIR, file).replaceAll("\\", "/");
+  if (rel === "index.html") return "/";
+  if (rel.endsWith("/index.html")) return `/${rel.slice(0, -"index.html".length)}`;
+  return `/${rel}`;
 }
 
-for (const name of ["index.html", "404.html"]) {
-  writeFileSync(join(PUBLIC_DIR, name), rebased);
+function rebaseRootUrls(html) {
+  // Vite-processed URLs already start with BASE; skip them to avoid doubling.
+  return html.replace(/(href|src|content)="(\/[^"]*)"/g, (match, attr, url) => {
+    if (url.startsWith("//") || url.startsWith(BASE)) return match;
+    return `${attr}="${BASE}${url.slice(1)}"`;
+  });
 }
+
+function injectShareMeta(html, urlPath) {
+  if (html.includes('property="og:title"')) return html;
+  const title = html.match(/<title>([^<]*)<\/title>/)?.[1] || APP_NAME;
+  const description =
+    html.match(/<meta name="description" content="([^"]*)"/)?.[1] ||
+    DEFAULT_DESCRIPTION;
+  const tags = [
+    '<meta property="og:type" content="website">',
+    `<meta property="og:site_name" content="${APP_NAME}">`,
+    `<meta property="og:title" content="${title}">`,
+    `<meta property="og:description" content="${description}">`,
+    `<meta property="og:url" content="${SITE_URL}${urlPath.replace(/^\/+/, "")}">`,
+    `<meta property="og:image" content="${SITE_URL}og.jpg">`,
+    '<meta name="twitter:card" content="summary_large_image">',
+    `<meta name="twitter:title" content="${title}">`,
+    `<meta name="twitter:description" content="${description}">`,
+    `<meta name="twitter:image" content="${SITE_URL}og.jpg">`,
+  ].join("");
+  return html.replace("</head>", `${tags}</head>`);
+}
+
+let processed = 0;
+for (const file of walk(PUBLIC_DIR)) {
+  const html = readFileSync(file, "utf8");
+  const updated = injectShareMeta(
+    rebaseRootUrls(html).replace(
+      /href="[^"]*?\/assets\/styles-[^"]*?\.css"/g,
+      `href="${stylesheet}"`,
+    ),
+    urlPathFor(file),
+  );
+  if (updated !== html) {
+    writeFileSync(file, updated);
+    processed += 1;
+  }
+}
+
+writeFileSync(join(PUBLIC_DIR, "404.html"), readFileSync(indexPath, "utf8"));
 
 const manifest = {
   name: APP_NAME,
@@ -94,6 +142,5 @@ writeFileSync(join(grokDir, "manifest.webmanifest"), JSON.stringify(manifest, nu
 writeFileSync(join(PUBLIC_DIR, ".nojekyll"), "");
 
 console.log(
-  `[pages-postbuild] wrote index.html + 404.html from ${shellPath.endsWith("_shell.html") ? "_shell.html" : "index.html"}, ` +
-    `PWA manifest and .nojekyll into ${PUBLIC_DIR}`,
+  `[pages-postbuild] patched ${processed} html file(s), wrote 404.html + PWA manifest + .nojekyll into ${PUBLIC_DIR}`,
 );
