@@ -42,9 +42,17 @@ const headingClass: Record<2 | 3 | 4, string> = {
 export function BodyBlocks({ blocks, max }: { blocks?: BodyBlock[]; max?: number }) {
   if (!blocks?.length) return null;
   const shown = max ? blocks.slice(0, max) : blocks;
+  let previousLevel = 1;
+  const rendered = shown.map((block) => {
+    if (block.type !== "heading") return block;
+    // Keep the document outline from skipping levels (axe heading-order).
+    const level = Math.min(block.level, previousLevel + 1) as 2 | 3 | 4;
+    previousLevel = level;
+    return { ...block, level };
+  });
   return (
     <div className="max-w-[68ch] space-y-4 text-base leading-[1.7] text-body">
-      {shown.map((block, i) => {
+      {rendered.map((block, i) => {
         if (block.type === "heading") {
           const Tag = `h${block.level}` as "h2" | "h3" | "h4";
           return (

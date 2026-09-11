@@ -57,18 +57,23 @@ function PairsTable({ table }: { table: Extract<SpecTableData, { kind: "pairs" }
 
 function MatrixTable({ table }: { table: Extract<SpecTableData, { kind: "matrix" }> }) {
   const { visible, toggle, capped } = useVisibleRows(table.rows);
+  const columnLabel = (column: string, index: number) =>
+    column || (table.columns.length === 1 ? "Value" : `Value ${index + 1}`);
   return (
-    <div className="overflow-x-auto rounded-xl bg-surface shadow-card">
+    <div
+      tabIndex={0}
+      className="overflow-x-auto rounded-xl bg-surface shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+    >
       <table className="min-w-full text-sm">
         {table.caption ? <caption className={captionClass}>{table.caption}</caption> : null}
         <thead>
           <tr className="border-b border-border bg-surface text-left text-xs uppercase tracking-[0.12em] text-muted">
             <th scope="col" className="sticky left-0 z-10 bg-surface px-4 py-3 font-medium">
-              {table.labelHeader}
+              {table.labelHeader || "Parameter"}
             </th>
             {table.columns.map((column, i) => (
               <th key={`${column}-${i}`} scope="col" className="px-4 py-3 font-medium">
-                {column}
+                {columnLabel(column, i)}
               </th>
             ))}
           </tr>
