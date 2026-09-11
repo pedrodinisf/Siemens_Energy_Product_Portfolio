@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import re
+import socket
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -14,6 +15,22 @@ UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
+
+
+def _prefer_ipv4() -> None:
+    """CloudFront AAAA records can blackhole while urlopen tries them serially."""
+    original = socket.getaddrinfo
+
+    def ordered(host, port, family=0, type=0, proto=0, flags=0):
+        return sorted(
+            original(host, port, family, type, proto, flags),
+            key=lambda result: 0 if result[0] == socket.AF_INET else 1,
+        )
+
+    socket.getaddrinfo = ordered
+
+
+_prefer_ipv4()
 
 BAD_HINTS = [
     (r"webheader|web-header|web_header", -95),

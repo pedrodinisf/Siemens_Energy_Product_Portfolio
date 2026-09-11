@@ -10,3 +10,5 @@ node_modules/
 .grok/preview.pid
 .env
 .env.*
+.venv-pages/
+__pycache__/
