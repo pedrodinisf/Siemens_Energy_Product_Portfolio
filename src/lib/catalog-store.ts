@@ -1,5 +1,5 @@
 import bundled from "@/data/catalog-index.json";
-import type { Catalog, CatalogFaq, ItemDetail } from "./catalog";
+import type { BodyBlock, Catalog, CatalogFaq, ItemDetail } from "./catalog";
 
 const catalog = bundled as Catalog;
 
@@ -11,12 +11,12 @@ export type { ItemDetail } from "./catalog";
  * item pages fetch both in parallel. The promises are memoized so every
  * consumer shares one fetch per chunk.
  */
-let bodyPromise: Promise<Record<string, string>> | null = null;
+let bodyPromise: Promise<Record<string, BodyBlock[]>> | null = null;
 let faqsPromise: Promise<Record<string, CatalogFaq[]>> | null = null;
 
-export function loadAllBodies(): Promise<Record<string, string>> {
+export function loadAllBodies(): Promise<Record<string, BodyBlock[]>> {
   bodyPromise ??= import("@/data/catalog-body.json").then(
-    (module) => module.default as Record<string, string>,
+    (module) => module.default as Record<string, BodyBlock[]>,
   );
   return bodyPromise;
 }
@@ -28,7 +28,7 @@ export function loadAllFaqs(): Promise<Record<string, CatalogFaq[]>> {
   return faqsPromise;
 }
 
-export async function loadItemBody(id: string): Promise<string | undefined> {
+export async function loadItemBody(id: string): Promise<BodyBlock[] | undefined> {
   return (await loadAllBodies())[id];
 }
 

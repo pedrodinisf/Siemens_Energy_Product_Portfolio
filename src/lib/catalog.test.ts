@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   assetHref,
+  bodyText,
   fileHref,
   formatBytes,
   kindLabel,
   prettyFamily,
   searchItems,
   specText,
+  type BodyBlock,
   type CatalogFile,
   type CatalogItem,
 } from "./catalog.ts";
@@ -113,12 +115,27 @@ test("searchItems matches metadata, specs and file labels with AND semantics", (
   assert.equal(searchItems(items, "").length, 2);
 });
 
+test("bodyText flattens headings, paragraphs and list items", () => {
+  const blocks: BodyBlock[] = [
+    { type: "heading", level: 2, text: "Key benefits" },
+    { type: "paragraph", text: "A robust design." },
+    { type: "list", ordered: false, items: ["Low emissions", "High availability"] },
+  ];
+  const text = bodyText(blocks);
+  assert.match(text, /Key benefits/);
+  assert.match(text, /robust design/);
+  assert.match(text, /High availability/);
+  assert.equal(bodyText(undefined), "");
+});
+
 test("searchItems searches lazily loaded body text only when provided", () => {
   const items = [
     item({ id: "a", title: "SGT-800 gas turbine" }),
     item({ id: "b", title: "Something else" }),
   ];
-  const bodies = { b: "With over 620 successful installations worldwide." };
+  const bodies: Record<string, BodyBlock[]> = {
+    b: [{ type: "paragraph", text: "With over 620 successful installations worldwide." }],
+  };
 
   assert.equal(searchItems(items, "620 installations").length, 0);
   assert.equal(searchItems(items, "620 installations", bodies)[0]?.id, "b");

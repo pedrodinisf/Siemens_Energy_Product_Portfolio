@@ -36,7 +36,7 @@ test("catalog-body and catalog-faqs hold exactly the body/faqs of every item", (
     full.items.filter((i) => i.faqs?.length).length,
   );
   for (const entry of full.items) {
-    assert.equal(bodies[entry.id], entry.body || undefined, entry.id);
+    assert.deepEqual(bodies[entry.id], entry.body || undefined, entry.id);
     assert.deepEqual(faqs[entry.id], entry.faqs?.length ? entry.faqs : undefined, entry.id);
   }
 });

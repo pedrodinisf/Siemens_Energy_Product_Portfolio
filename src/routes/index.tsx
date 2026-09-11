@@ -7,6 +7,7 @@ import {
   prettyFamily,
   searchItems,
   SECTOR_ORDER,
+  type BodyBlock,
   type CatalogFamily,
 } from "@/lib/catalog";
 import {
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { q, sector } = Route.useSearch();
   const { catalog, ready } = useCatalog();
-  const [bodies, setBodies] = useState<Record<string, string> | null>(null);
+  const [bodies, setBodies] = useState<Record<string, BodyBlock[]> | null>(null);
 
   // Body text lives in its own chunk: metadata results show instantly, then
   // full-text matches appear once the chunk arrives.

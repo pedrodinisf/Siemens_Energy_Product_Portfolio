@@ -4,6 +4,7 @@ import { FileRow } from "@/components/file-row";
 import { ProductCard } from "@/components/product-card";
 import { CatalogImage } from "@/components/catalog-image";
 import { SpecTable } from "@/components/spec-table";
+import { BodyBlocks } from "@/components/body-blocks";
 import { kindLabel } from "@/lib/catalog";
 import { findItem, loadItemDetail, useItem } from "@/lib/catalog-store";
 
@@ -117,14 +118,10 @@ function ItemPage() {
         </section>
       ) : null}
 
-      {detail?.body ? (
+      {detail?.body?.length ? (
         <section className="space-y-3">
           <h2 className="font-display text-2xl font-semibold">Overview</h2>
-          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-muted">
-            {detail.body.split("\n\n").map((p, i) => (
-              <p key={i}>{p}</p>
-            ))}
-          </div>
+          <BodyBlocks blocks={detail.body} />
         </section>
       ) : null}
 

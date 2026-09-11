@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { BodyBlocks } from "@/components/body-blocks";
 import { ProductCard } from "@/components/product-card";
 import { FileRow } from "@/components/file-row";
 import { prettyFamily } from "@/lib/catalog";
@@ -68,13 +69,7 @@ function FamilyPage() {
         ) : null}
       </div>
 
-      {overviewBody ? (
-        <article className="max-w-3xl space-y-3 text-sm leading-relaxed text-muted">
-          {overviewBody.split("\n\n").slice(0, 6).map((p) => (
-            <p key={p.slice(0, 40)}>{p}</p>
-          ))}
-        </article>
-      ) : null}
+      {overviewBody?.length ? <BodyBlocks blocks={overviewBody} max={6} /> : null}
 
       {rest.length ? (
         <section className="space-y-4">

@@ -19,6 +19,12 @@ export type RelatedProduct = {
 
 export type CatalogFaq = { q: string; a: string };
 
+/** Structured item body, cleaned by `scripts/clean-bodies.py`. */
+export type BodyBlock =
+  | { type: "heading"; level: 2 | 3 | 4; text: string }
+  | { type: "paragraph"; text: string; bold?: string[] }
+  | { type: "list"; ordered: boolean; items: string[] };
+
 export type SpecPair = { name: string; value: string };
 
 export type SpecMatrixRow = { label: string; values: string[] };
@@ -56,7 +62,7 @@ export type CatalogItem = {
   /** Loaded lazily from `catalog-faqs.json` on item pages. */
   faqs?: CatalogFaq[];
   /** Loaded lazily from `catalog-body.json` on item/family pages and search. */
-  body?: string;
+  body?: BodyBlock[];
   headings: string[];
   related: RelatedProduct[];
   files: CatalogFile[];
@@ -183,9 +189,17 @@ export function specText(specs: SpecTable[]) {
 
 /** Lazily loaded per-item payload assembled from the body and FAQ chunks. */
 export type ItemDetail = {
-  body?: string;
+  body?: BodyBlock[];
   faqs?: CatalogFaq[];
 };
+
+/** Flatten structured body blocks into one searchable string. */
+export function bodyText(blocks?: BodyBlock[]) {
+  if (!blocks?.length) return "";
+  return blocks
+    .flatMap((block) => (block.type === "list" ? block.items : [block.text]))
+    .join(" ");
+}
 
 /**
  * Search all metadata plus the lazily loaded body text when it is available;
@@ -194,7 +208,7 @@ export type ItemDetail = {
 export function searchItems(
   items: CatalogItem[],
   q: string,
-  bodies?: Record<string, string>,
+  bodies?: Record<string, BodyBlock[]>,
 ) {
   const needle = q.trim().toLowerCase();
   if (!needle) return items;
@@ -210,7 +224,7 @@ export function searchItems(
       item.highlights.join(" "),
       specText(item.specs),
       item.files.map((f) => f.label).join(" "),
-      bodies?.[item.id] ?? "",
+      bodyText(bodies?.[item.id]),
     ]
       .join(" ")
       .toLowerCase();
