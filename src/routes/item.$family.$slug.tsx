@@ -102,7 +102,7 @@ function ItemPage() {
       {item.specs.length ? (
         <section className="space-y-3">
           <h2 className="font-display text-2xl font-semibold">Technical data</h2>
-          <SpecTable specs={item.specs} />
+          <SpecTable tables={item.specs} />
         </section>
       ) : null}
 

@@ -4,10 +4,10 @@ import {
   assetHref,
   fileHref,
   formatBytes,
-  isNamedSpec,
   kindLabel,
   prettyFamily,
   searchItems,
+  specText,
   type CatalogFile,
   type CatalogItem,
 } from "./catalog.ts";
@@ -68,10 +68,21 @@ test("formatBytes renders small, KB and MB sizes", () => {
   assert.equal(formatBytes(2.5 * 1024 * 1024), "2.5 MB");
 });
 
-test("kindLabel and isNamedSpec handle both spec shapes", () => {
+test("kindLabel and specText cover both spec shapes", () => {
   assert.equal(kindLabel("white-paper"), "white paper");
-  assert.equal(isNamedSpec({ name: "Rating", value: "62 MW" }), true);
-  assert.equal(isNamedSpec({ "62 MW": "62.5 MW(e)" }), false);
+  const tables: Parameters<typeof specText>[0] = [
+    { kind: "pairs", rows: [{ name: "Rating", value: "62 MW" }] },
+    {
+      kind: "matrix",
+      labelHeader: "Parameter",
+      columns: ["62 MW version"],
+      rows: [{ label: "Gross output", values: ["62.5 MW(e)"] }],
+    },
+  ];
+  const text = specText(tables);
+  assert.match(text, /Rating/);
+  assert.match(text, /62 MW version/);
+  assert.match(text, /62\.5 MW\(e\)/);
 });
 
 test("searchItems matches metadata, specs and file labels with AND semantics", () => {
@@ -80,7 +91,14 @@ test("searchItems matches metadata, specs and file labels with AND semantics", (
       id: "gas-turbines/sgt-800",
       title: "SGT-800 gas turbine",
       familyLabel: "Gas Turbines",
-      specs: [{ "62 MW RATING": "62.5 MW(e)" }],
+      specs: [
+        {
+          kind: "matrix",
+          labelHeader: "",
+          columns: ["62 MW RATING"],
+          rows: [{ label: "Power output", values: ["62.5 MW(e)"] }],
+        },
+      ],
       files: [{ url: "https://x", label: "Feature poster", kind: "poster", filename: "p.pdf" }],
     }),
     item({ id: "steam-turbines/sst-600", title: "SST-600 steam turbine" }),
@@ -90,6 +108,7 @@ test("searchItems matches metadata, specs and file labels with AND semantics", (
   assert.equal(searchItems(items, "turbine").length, 2);
   assert.equal(searchItems(items, "sgt steam").length, 0);
   assert.equal(searchItems(items, "62.5 mw").length, 1);
+  assert.equal(searchItems(items, "power output").length, 1);
   assert.equal(searchItems(items, "feature poster").length, 1);
   assert.equal(searchItems(items, "").length, 2);
 });

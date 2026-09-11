@@ -19,9 +19,20 @@ export type RelatedProduct = {
 
 export type CatalogFaq = { q: string; a: string };
 
-export type SpecRow =
-  | { name: string; value: string }
-  | Record<string, string>;
+export type SpecPair = { name: string; value: string };
+
+export type SpecMatrixRow = { label: string; values: string[] };
+
+/** One page table, normalized by `scripts/normalize-spec-tables.py`. */
+export type SpecTable =
+  | { kind: "pairs"; caption?: string; rows: SpecPair[] }
+  | {
+      kind: "matrix";
+      caption?: string;
+      labelHeader: string;
+      columns: string[];
+      rows: SpecMatrixRow[];
+    };
 
 export type CatalogItem = {
   id: string;
@@ -41,7 +52,7 @@ export type CatalogItem = {
   heroLocal?: string;
   heroFit?: "cover" | "contain";
   highlights: string[];
-  specs: SpecRow[];
+  specs: SpecTable[];
   /** Loaded lazily from `catalog-faqs.json` on item pages. */
   faqs?: CatalogFaq[];
   /** Loaded lazily from `catalog-body.json` on item/family pages and search. */
@@ -155,8 +166,19 @@ export function kindLabel(kind: string) {
   return kind.replace(/-/g, " ");
 }
 
-export function isNamedSpec(row: SpecRow): row is { name: string; value: string } {
-  return "name" in row && "value" in row && Object.keys(row).length <= 4;
+/** Flatten every spec cell into one searchable string. */
+export function specText(specs: SpecTable[]) {
+  return specs
+    .flatMap((table) =>
+      table.kind === "pairs"
+        ? table.rows.flatMap((row) => [row.name, row.value])
+        : [
+            table.labelHeader,
+            ...table.columns,
+            ...table.rows.flatMap((row) => [row.label, ...row.values]),
+          ],
+    )
+    .join(" ");
 }
 
 /** Lazily loaded per-item payload assembled from the body and FAQ chunks. */
@@ -186,7 +208,7 @@ export function searchItems(
       item.kind,
       item.slug,
       item.highlights.join(" "),
-      item.specs.map((row) => Object.values(row).join(" ")).join(" "),
+      specText(item.specs),
       item.files.map((f) => f.label).join(" "),
       bodies?.[item.id] ?? "",
     ]

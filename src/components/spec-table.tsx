@@ -1,52 +1,115 @@
-import type { SpecRow } from "@/lib/catalog";
-import { isNamedSpec } from "@/lib/catalog";
+import { useState } from "react";
+import type { SpecMatrixRow, SpecPair, SpecTable as SpecTableData } from "@/lib/catalog";
 
-export function SpecTable({ specs }: { specs: SpecRow[] }) {
-  if (!specs.length) return null;
-  const named = specs.filter(isNamedSpec);
-  if (named.length === specs.length) {
-    return (
-      <div className="overflow-hidden rounded-xl bg-surface shadow-card">
-        <table className="w-full text-sm">
-          <tbody>
-            {named.map((row) => (
-              <tr key={row.name} className="border-b border-border last:border-0">
-                <th className="w-[40%] px-4 py-3 text-left font-medium text-muted">{row.name}</th>
-                <td className="px-4 py-3 text-fg">{row.value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+const COLLAPSED_ROWS = 12;
+
+const captionClass =
+  "caption-top px-4 pt-3 text-left text-xs font-medium uppercase tracking-[0.12em] text-muted";
+
+function useVisibleRows(rows: unknown[]) {
+  const [expanded, setExpanded] = useState(false);
+  const capped = rows.length > COLLAPSED_ROWS;
+  return {
+    expanded: capped && expanded,
+    visible: capped && !expanded ? rows.slice(0, COLLAPSED_ROWS) : rows,
+    toggle: (
+      <div className="border-t border-border px-4 py-2">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-xs font-medium text-accent hover:text-fg"
+        >
+          {expanded ? "Show fewer" : `Show all ${rows.length} rows`}
+        </button>
       </div>
-    );
-  }
-  const headers = Array.from(
-    new Set(specs.flatMap((s) => Object.keys(s))),
+    ),
+    capped,
+  };
+}
+
+function PairsTable({ table }: { table: Extract<SpecTableData, { kind: "pairs" }> }) {
+  const { visible, toggle, capped } = useVisibleRows(table.rows);
+  return (
+    <div className="overflow-hidden rounded-xl bg-surface shadow-card">
+      <table className="w-full text-sm">
+        {table.caption ? <caption className={captionClass}>{table.caption}</caption> : null}
+        <tbody>
+          {(visible as SpecPair[]).map((row, i) => (
+            <tr
+              key={`${row.name}-${i}`}
+              className="border-b border-border bg-surface last:border-0 even:bg-surface-2"
+            >
+              <th
+                scope="row"
+                className="w-[40%] px-4 py-3 text-left font-medium text-muted"
+              >
+                {row.name || "—"}
+              </th>
+              <td className="px-4 py-3 text-fg">{row.value || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {capped ? toggle : null}
+    </div>
   );
+}
+
+function MatrixTable({ table }: { table: Extract<SpecTableData, { kind: "matrix" }> }) {
+  const { visible, toggle, capped } = useVisibleRows(table.rows);
   return (
     <div className="overflow-x-auto rounded-xl bg-surface shadow-card">
       <table className="min-w-full text-sm">
+        {table.caption ? <caption className={captionClass}>{table.caption}</caption> : null}
         <thead>
-          <tr className="border-b border-border text-left text-xs uppercase tracking-[0.12em] text-muted">
-            {headers.map((h) => (
-              <th key={h} className="px-4 py-3 font-medium">
-                {h}
+          <tr className="border-b border-border bg-surface text-left text-xs uppercase tracking-[0.12em] text-muted">
+            <th scope="col" className="sticky left-0 z-10 bg-surface px-4 py-3 font-medium">
+              {table.labelHeader}
+            </th>
+            {table.columns.map((column, i) => (
+              <th key={`${column}-${i}`} scope="col" className="px-4 py-3 font-medium">
+                {column}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {specs.map((row, i) => (
-            <tr key={i} className="border-b border-border last:border-0">
-              {headers.map((h) => (
-                <td key={h} className="px-4 py-3 text-fg">
-                  {(row as Record<string, string>)[h] ?? ""}
+          {(visible as SpecMatrixRow[]).map((row, i) => (
+            <tr
+              key={`${row.label}-${i}`}
+              className="border-b border-border bg-surface last:border-0 even:bg-surface-2"
+            >
+              <th
+                scope="row"
+                className="sticky left-0 z-10 bg-inherit px-4 py-3 text-left font-medium text-fg"
+              >
+                {row.label || "—"}
+              </th>
+              {table.columns.map((_, j) => (
+                <td key={j} className="px-4 py-3 text-muted">
+                  {row.values[j] || "—"}
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+      {capped ? toggle : null}
+    </div>
+  );
+}
+
+export function SpecTable({ tables }: { tables: SpecTableData[] }) {
+  if (!tables.length) return null;
+  return (
+    <div className="space-y-3">
+      {tables.map((table, i) =>
+        table.kind === "pairs" ? (
+          <PairsTable key={i} table={table} />
+        ) : (
+          <MatrixTable key={i} table={table} />
+        ),
+      )}
     </div>
   );
 }
