@@ -33,11 +33,11 @@ Scraped on 2026-09-10 from the public
 - The full scrape is kept locally in `data/siemens-energy/` — one folder per
   page with a `README.md`, `product.json`, hero image, and `files/`. It is not
   tracked in git (the repo stays lean); regenerate it with the scraper. The app
-  reads two generated files: `src/data/catalog-index.json` (metadata, bundled
-  with the app) and `src/data/catalog-detail.json` (body and FAQ text, loaded
-  on demand by item/family pages and full-text search). Run
-  `npm run catalog:split` after re-scraping to regenerate them from
-  `src/data/catalog.json`.
+  reads three generated files: `src/data/catalog-index.json` (metadata, bundled
+  with the app), `src/data/catalog-body.json` (body text, loaded on demand by
+  item/family pages and full-text search) and `src/data/catalog-faqs.json`
+  (FAQ answers, item pages only). Run `npm run catalog:split` after
+  re-scraping to regenerate them from `src/data/catalog.json`.
 - Hero images are served as WebP; `scripts/optimize-catalog-images.py`
   (requires Pillow) re-encodes them and repoints the catalogs after a scrape.
 - Scraper: [`scripts/crawl-siemens-energy.py`](scripts/crawl-siemens-energy.py)

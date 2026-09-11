@@ -17,6 +17,8 @@ export type RelatedProduct = {
   description?: string;
 };
 
+export type CatalogFaq = { q: string; a: string };
+
 export type SpecRow =
   | { name: string; value: string }
   | Record<string, string>;
@@ -40,9 +42,9 @@ export type CatalogItem = {
   heroFit?: "cover" | "contain";
   highlights: string[];
   specs: SpecRow[];
-  /** Loaded lazily from `catalog-detail.json` on item/family pages. */
-  faqs?: { q: string; a: string }[];
-  /** Loaded lazily from `catalog-detail.json` on item/family pages. */
+  /** Loaded lazily from `catalog-faqs.json` on item pages. */
+  faqs?: CatalogFaq[];
+  /** Loaded lazily from `catalog-body.json` on item/family pages and search. */
   body?: string;
   headings: string[];
   related: RelatedProduct[];
@@ -157,26 +159,25 @@ export function isNamedSpec(row: SpecRow): row is { name: string; value: string 
   return "name" in row && "value" in row && Object.keys(row).length <= 4;
 }
 
-/** Lazily loaded per-item payload from `catalog-detail.json`. */
+/** Lazily loaded per-item payload assembled from the body and FAQ chunks. */
 export type ItemDetail = {
   body?: string;
-  faqs?: { q: string; a: string }[];
+  faqs?: CatalogFaq[];
 };
 
 /**
- * Search all metadata plus the lazily loaded body/FAQ text when it is
- * available; callers without details get the fast metadata-only match set.
+ * Search all metadata plus the lazily loaded body text when it is available;
+ * callers without bodies get the fast metadata-only match set.
  */
 export function searchItems(
   items: CatalogItem[],
   q: string,
-  details?: Record<string, ItemDetail>,
+  bodies?: Record<string, string>,
 ) {
   const needle = q.trim().toLowerCase();
   if (!needle) return items;
   const parts = needle.split(/\s+/).filter(Boolean);
   return items.filter((item) => {
-    const detail = details?.[item.id];
     const hay = [
       item.title,
       item.h1,
@@ -187,8 +188,7 @@ export function searchItems(
       item.highlights.join(" "),
       item.specs.map((row) => Object.values(row).join(" ")).join(" "),
       item.files.map((f) => f.label).join(" "),
-      detail?.body ?? "",
-      (detail?.faqs ?? []).map((f) => `${f.q} ${f.a}`).join(" "),
+      bodies?.[item.id] ?? "",
     ]
       .join(" ")
       .toLowerCase();

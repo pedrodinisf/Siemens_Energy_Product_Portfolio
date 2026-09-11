@@ -14,7 +14,8 @@ const readJson = (name) =>
 
 const full = readJson("catalog.json");
 const index = readJson("catalog-index.json");
-const detail = readJson("catalog-detail.json");
+const bodies = readJson("catalog-body.json");
+const faqs = readJson("catalog-faqs.json");
 
 test("catalog-index mirrors the full catalog minus body/faqs", () => {
   assert.equal(index.items.length, full.items.length);
@@ -28,17 +29,15 @@ test("catalog-index mirrors the full catalog minus body/faqs", () => {
   }
 });
 
-test("catalog-detail holds exactly the body/faqs of every item", () => {
-  const expectedCount = full.items.filter((i) => i.body || i.faqs?.length).length;
-  assert.equal(Object.keys(detail).length, expectedCount);
+test("catalog-body and catalog-faqs hold exactly the body/faqs of every item", () => {
+  assert.equal(Object.keys(bodies).length, full.items.filter((i) => i.body).length);
+  assert.equal(
+    Object.keys(faqs).length,
+    full.items.filter((i) => i.faqs?.length).length,
+  );
   for (const entry of full.items) {
-    const got = detail[entry.id];
-    if (!entry.body && !entry.faqs?.length) {
-      assert.equal(got, undefined, entry.id);
-      continue;
-    }
-    assert.equal(got.body, entry.body, entry.id);
-    assert.deepEqual(got.faqs, entry.faqs?.length ? entry.faqs : undefined, entry.id);
+    assert.equal(bodies[entry.id], entry.body || undefined, entry.id);
+    assert.deepEqual(faqs[entry.id], entry.faqs?.length ? entry.faqs : undefined, entry.id);
   }
 });
 

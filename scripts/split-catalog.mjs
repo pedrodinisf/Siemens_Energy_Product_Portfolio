@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
- * Split `src/data/catalog.json` into the two files the app loads:
+ * Split `src/data/catalog.json` into the files the app loads:
  *
- *   catalog-index.json   everything except `body`/`faqs` (bundled app index)
- *   catalog-detail.json  id -> { body, faqs } (lazy chunk, item/family pages)
+ *   catalog-index.json  everything except `body`/`faqs` (bundled app index)
+ *   catalog-body.json   id -> body  (lazy chunk: item/family pages + search)
+ *   catalog-faqs.json   id -> faqs  (lazy chunk: item pages only)
  *
- * The full file stays the source of truth (and mirrors
- * `data/siemens-energy/catalog.json`); run this after re-scraping:
+ * Keeping FAQ text out of the search corpus roughly halves what the first
+ * search has to download. The full file stays the source of truth (and mirrors
+ * the local scrape archive); run this after re-scraping:
  *
  *   npm run catalog:split
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,20 +24,23 @@ const index = {
   items: catalog.items.map(({ body: _body, faqs: _faqs, ...rest }) => rest),
 };
 
-const detail = {};
+const bodies = {};
+const faqs = {};
 for (const item of catalog.items) {
-  if (item.body || item.faqs?.length) {
-    detail[item.id] = {
-      ...(item.body ? { body: item.body } : {}),
-      ...(item.faqs?.length ? { faqs: item.faqs } : {}),
-    };
-  }
+  if (item.body) bodies[item.id] = item.body;
+  if (item.faqs?.length) faqs[item.id] = item.faqs;
 }
 
 writeFileSync(join(DATA_DIR, "catalog-index.json"), JSON.stringify(index));
-writeFileSync(join(DATA_DIR, "catalog-detail.json"), JSON.stringify(detail));
+writeFileSync(join(DATA_DIR, "catalog-body.json"), JSON.stringify(bodies));
+writeFileSync(join(DATA_DIR, "catalog-faqs.json"), JSON.stringify(faqs));
+
+// The previous combined chunk is superseded by body/faqs.
+const legacy = join(DATA_DIR, "catalog-detail.json");
+if (existsSync(legacy)) rmSync(legacy);
 
 const kb = (value) => `${(JSON.stringify(value).length / 1024).toFixed(0)} KB`;
 console.log(
-  `[catalog:split] index ${kb(index)} (${index.items.length} items), detail ${kb(detail)} (${Object.keys(detail).length} entries)`,
+  `[catalog:split] index ${kb(index)}, body ${kb(bodies)} (${Object.keys(bodies).length}), ` +
+    `faqs ${kb(faqs)} (${Object.keys(faqs).length})`,
 );

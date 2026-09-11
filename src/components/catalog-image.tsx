@@ -31,7 +31,7 @@ export function CatalogImage({
           className,
         )}
       >
-        <span className="font-display text-2xl font-semibold tracking-wide text-subtle/45">
+        <span className="font-display text-2xl font-semibold tracking-wide text-subtle">
           {label}
         </span>
       </div>

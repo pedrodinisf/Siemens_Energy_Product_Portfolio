@@ -94,16 +94,13 @@ test("searchItems matches metadata, specs and file labels with AND semantics", (
   assert.equal(searchItems(items, "").length, 2);
 });
 
-test("searchItems searches lazily loaded body/FAQ text only when provided", () => {
+test("searchItems searches lazily loaded body text only when provided", () => {
   const items = [
     item({ id: "a", title: "SGT-800 gas turbine" }),
     item({ id: "b", title: "Something else" }),
   ];
-  const details = {
-    b: { body: "With over 620 successful installations worldwide.", faqs: [{ q: "Why?", a: "Because." }] },
-  };
+  const bodies = { b: "With over 620 successful installations worldwide." };
 
   assert.equal(searchItems(items, "620 installations").length, 0);
-  assert.equal(searchItems(items, "620 installations", details)[0]?.id, "b");
-  assert.equal(searchItems(items, "because", details)[0]?.id, "b");
+  assert.equal(searchItems(items, "620 installations", bodies)[0]?.id, "b");
 });

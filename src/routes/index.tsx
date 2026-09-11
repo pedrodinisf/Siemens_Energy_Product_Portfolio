@@ -10,9 +10,8 @@ import {
   type CatalogFamily,
 } from "@/lib/catalog";
 import {
-  loadAllDetails,
+  loadAllBodies,
   useCatalog,
-  type ItemDetail,
 } from "@/lib/catalog-store";
 import { cn } from "@/lib/utils";
 
@@ -29,22 +28,22 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { q, sector } = Route.useSearch();
   const { catalog, ready } = useCatalog();
-  const [details, setDetails] = useState<Record<string, ItemDetail> | null>(null);
+  const [bodies, setBodies] = useState<Record<string, string> | null>(null);
 
-  // Body/FAQ text lives in a separate chunk: metadata results show instantly,
-  // then full-text matches appear once the chunk arrives.
+  // Body text lives in its own chunk: metadata results show instantly, then
+  // full-text matches appear once the chunk arrives.
   useEffect(() => {
-    if (!q || details) return;
+    if (!q || bodies) return;
     let active = true;
-    void loadAllDetails().then((loaded) => {
-      if (active) setDetails(loaded);
+    void loadAllBodies().then((loaded) => {
+      if (active) setBodies(loaded);
     });
     return () => {
       active = false;
     };
-  }, [q, details]);
+  }, [q, bodies]);
 
-  const items = searchItems(catalog.items, q ?? "", details ?? undefined);
+  const items = searchItems(catalog.items, q ?? "", bodies ?? undefined);
   const filtered = sector ? items.filter((i) => i.sector === sector) : items;
   const products = filtered.filter((i) => i.bucket === "products");
   const families = catalog.families.filter((f) =>
@@ -135,9 +134,9 @@ function Home() {
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
-    <div className="rounded-lg bg-surface px-3 py-3 shadow-card">
-      <div className="font-display text-2xl font-semibold tabular-nums">{n}</div>
-      <div className="text-[11px] uppercase tracking-[0.14em] text-muted">{label}</div>
+    <div className="flex flex-col-reverse rounded-lg bg-surface px-3 py-3 shadow-card">
+      <dt className="text-[11px] uppercase tracking-[0.14em] text-muted">{label}</dt>
+      <dd className="font-display text-2xl font-semibold tabular-nums">{n}</dd>
     </div>
   );
 }

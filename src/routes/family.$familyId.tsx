@@ -5,14 +5,14 @@ import { prettyFamily } from "@/lib/catalog";
 import {
   findFamily,
   findItem,
-  loadItemDetail,
+  loadItemBody,
   useCatalog,
 } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/family/$familyId")({
   loader: async ({ params }) => {
     const overview = findItem(params.familyId, "_overview");
-    return overview ? await loadItemDetail(overview.id) : undefined;
+    return overview ? await loadItemBody(overview.id) : undefined;
   },
   head: ({ params }) => {
     const family = findFamily(params.familyId);
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/family/$familyId")({
 
 function FamilyPage() {
   const { familyId } = Route.useParams();
-  const overviewDetail = Route.useLoaderData();
+  const overviewBody = Route.useLoaderData();
   const { catalog, isLoading } = useCatalog();
   const family = catalog.families.find((f) => f.id === familyId);
   const items = catalog.items.filter((i) => i.family === familyId);
@@ -68,9 +68,9 @@ function FamilyPage() {
         ) : null}
       </div>
 
-      {overviewDetail?.body ? (
+      {overviewBody ? (
         <article className="max-w-3xl space-y-3 text-sm leading-relaxed text-muted">
-          {overviewDetail.body.split("\n\n").slice(0, 6).map((p) => (
+          {overviewBody.split("\n\n").slice(0, 6).map((p) => (
             <p key={p.slice(0, 40)}>{p}</p>
           ))}
         </article>
