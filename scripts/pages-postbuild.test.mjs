@@ -4,6 +4,8 @@ import { test } from "node:test";
 import {
   injectShareMeta,
   rebaseRootUrls,
+  renderRobots,
+  renderSitemap,
   urlPathFor,
 } from "./pages-postbuild.mjs";
 
@@ -53,6 +55,19 @@ test("every downloaded catalog file exists in public/", () => {
   assert.deepEqual(missing, []);
 });
 
+test("every local hero image referenced by the catalog exists in public/", () => {
+  const missing = [];
+  const check = (value, owner) => {
+    if (!value || !value.startsWith("/catalog/images/")) return;
+    if (!existsSync(new URL(`../public${value}`, import.meta.url))) {
+      missing.push(`${owner}: ${value}`);
+    }
+  };
+  for (const entry of full.items) check(entry.heroLocal, entry.id);
+  for (const family of full.families) check(family.hero, `family ${family.id}`);
+  assert.deepEqual(missing, []);
+});
+
 test("rebaseRootUrls prefixes bare root paths, leaves based/external URLs", () => {
   const html =
     '<a href="/__grok/x">a</a>' +
@@ -78,8 +93,37 @@ test("injectShareMeta builds tags from the document and is idempotent", () => {
     out,
     /property="og:url" content="https:\/\/pedrodinisf\.github\.io\/Siemens_Energy_Product_Portfolio\/item\/a\/b\/"/,
   );
+  assert.match(
+    out,
+    /<link rel="canonical" href="https:\/\/pedrodinisf\.github\.io\/Siemens_Energy_Product_Portfolio\/item\/a\/b\/">/,
+  );
   assert.match(out, /name="twitter:card" content="summary_large_image"/);
   assert.equal(injectShareMeta(out, "/item/a/b/"), out);
+});
+
+test("renderSitemap lists every URL under the site root", () => {
+  const xml = renderSitemap(["/item/a/b/", "/", "/downloads/"]);
+  assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+  assert.match(xml, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
+  assert.match(
+    xml,
+    /<url><loc>https:\/\/pedrodinisf\.github\.io\/Siemens_Energy_Product_Portfolio\/item\/a\/b\/<\/loc><\/url>/,
+  );
+  assert.match(
+    xml,
+    /<url><loc>https:\/\/pedrodinisf\.github\.io\/Siemens_Energy_Product_Portfolio\/<\/loc><\/url>/,
+  );
+  assert.ok(xml.trimEnd().endsWith("</urlset>"));
+});
+
+test("renderRobots allows crawling and points at the sitemap", () => {
+  const robots = renderRobots();
+  assert.match(robots, /User-agent: \*/);
+  assert.match(robots, /Allow: \//);
+  assert.match(
+    robots,
+    /Sitemap: https:\/\/pedrodinisf\.github\.io\/Siemens_Energy_Product_Portfolio\/sitemap\.xml/,
+  );
 });
 
 test("urlPathFor maps built files to their served URLs", () => {

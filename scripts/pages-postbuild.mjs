@@ -64,19 +64,21 @@ export function rebaseRootUrls(html) {
   });
 }
 
-/** Add Open Graph/Twitter tags derived from the prerendered document. */
+/** Add canonical, Open Graph and Twitter tags derived from the prerendered document. */
 export function injectShareMeta(html, urlPath) {
   if (html.includes('property="og:title"')) return html;
   const title = html.match(/<title>([^<]*)<\/title>/)?.[1] || APP_NAME;
   const description =
     html.match(/<meta name="description" content="([^"]*)"/)?.[1] ||
     DEFAULT_DESCRIPTION;
+  const url = `${SITE_URL}${urlPath.replace(/^\/+/, "")}`;
   const tags = [
+    `<link rel="canonical" href="${url}">`,
     '<meta property="og:type" content="website">',
     `<meta property="og:site_name" content="${APP_NAME}">`,
     `<meta property="og:title" content="${title}">`,
     `<meta property="og:description" content="${description}">`,
-    `<meta property="og:url" content="${SITE_URL}${urlPath.replace(/^\/+/, "")}">`,
+    `<meta property="og:url" content="${url}">`,
     `<meta property="og:image" content="${SITE_URL}og.jpg">`,
     '<meta name="twitter:card" content="summary_large_image">',
     `<meta name="twitter:title" content="${title}">`,
@@ -84,6 +86,24 @@ export function injectShareMeta(html, urlPath) {
     `<meta name="twitter:image" content="${SITE_URL}og.jpg">`,
   ].join("");
   return html.replace("</head>", `${tags}</head>`);
+}
+
+/** XML sitemap for every prerendered page. */
+export function renderSitemap(urlPaths) {
+  const entries = [...urlPaths]
+    .sort()
+    .map((path) => `  <url><loc>${SITE_URL}${path.replace(/^\/+/, "")}</loc></url>`)
+    .join("\n");
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    `${entries}\n` +
+    "</urlset>\n"
+  );
+}
+
+export function renderRobots() {
+  return `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}sitemap.xml\n`;
 }
 
 function main() {
@@ -106,6 +126,7 @@ function main() {
   const stylesheet = `${BASE}assets/${styleFiles[0]}`;
 
   let processed = 0;
+  const urlPaths = [];
   for (const file of walk(PUBLIC_DIR)) {
     const html = readFileSync(file, "utf8");
     const updated = injectShareMeta(
@@ -115,6 +136,7 @@ function main() {
       ),
       urlPathFor(relative(PUBLIC_DIR, file)),
     );
+    urlPaths.push(urlPathFor(relative(PUBLIC_DIR, file)));
     if (updated !== html) {
       writeFileSync(file, updated);
       processed += 1;
@@ -122,6 +144,8 @@ function main() {
   }
 
   writeFileSync(join(PUBLIC_DIR, "404.html"), readFileSync(indexPath, "utf8"));
+  writeFileSync(join(PUBLIC_DIR, "sitemap.xml"), renderSitemap(urlPaths));
+  writeFileSync(join(PUBLIC_DIR, "robots.txt"), renderRobots());
 
   const manifest = {
     name: APP_NAME,
@@ -144,7 +168,7 @@ function main() {
   writeFileSync(join(PUBLIC_DIR, ".nojekyll"), "");
 
   console.log(
-    `[pages-postbuild] patched ${processed} html file(s), wrote 404.html + PWA manifest + .nojekyll into ${PUBLIC_DIR}`,
+    `[pages-postbuild] patched ${processed} html file(s); wrote 404.html + sitemap.xml (${urlPaths.length} urls) + robots.txt + PWA manifest + .nojekyll into ${PUBLIC_DIR}`,
   );
 }
 
