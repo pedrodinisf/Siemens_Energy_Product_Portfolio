@@ -104,6 +104,17 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+/**
+ * Quote one argument for a `cmd.exe` command line (the inverse of what
+ * CreateProcess does when cmd parses it). Only the shim path below needs it;
+ * args there are plain flags today, but quoting keeps `-e "…"` usable too.
+ */
+export function quoteWindowsArg(arg) {
+  if (arg === "") return '""';
+  if (!/[\s"&|<>^()%!]/.test(arg)) return arg;
+  return `"${arg.replace(/(\\*)"/g, "$1$1\\\"").replace(/(\\+)$/, "$1$1")}"`;
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
@@ -111,7 +122,20 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  // npm shims on Windows (`vite.cmd`) are batch files, which CreateProcess
+  // cannot launch directly — `spawn("vite", args)` fails ENOENT even with
+  // node_modules/.bin on PATH. Run the quoted command line through the shell
+  // as a SINGLE string: passing an args array with `shell: true` is deprecated
+  // and joins args unescaped, which breaks quoted arguments. Real executables
+  // stay argv-based so nothing else changes.
+  const child =
+    process.platform === "win32" && !/\.(exe|com)$/i.test(command)
+      ? spawn([command, ...args].map(quoteWindowsArg).join(" "), {
+          stdio: "inherit",
+          env,
+          shell: true,
+        })
+      : spawn(command, args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
