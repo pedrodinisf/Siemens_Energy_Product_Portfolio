@@ -2,9 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ProductCard } from "@/components/product-card";
 import { FileRow } from "@/components/file-row";
 import { prettyFamily } from "@/lib/catalog";
-import { findFamily, findItem, useCatalog } from "@/lib/catalog-store";
+import {
+  findFamily,
+  findItem,
+  loadItemDetail,
+  useCatalog,
+} from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/family/$familyId")({
+  loader: async ({ params }) => {
+    const overview = findItem(params.familyId, "_overview");
+    return overview ? await loadItemDetail(overview.id) : undefined;
+  },
   head: ({ params }) => {
     const family = findFamily(params.familyId);
     const overview = findItem(params.familyId, "_overview");
@@ -24,6 +33,7 @@ export const Route = createFileRoute("/family/$familyId")({
 
 function FamilyPage() {
   const { familyId } = Route.useParams();
+  const overviewDetail = Route.useLoaderData();
   const { catalog, isLoading } = useCatalog();
   const family = catalog.families.find((f) => f.id === familyId);
   const items = catalog.items.filter((i) => i.family === familyId);
@@ -58,9 +68,9 @@ function FamilyPage() {
         ) : null}
       </div>
 
-      {overview?.body ? (
+      {overviewDetail?.body ? (
         <article className="max-w-3xl space-y-3 text-sm leading-relaxed text-muted">
-          {overview.body.split("\n\n").slice(0, 6).map((p) => (
+          {overviewDetail.body.split("\n\n").slice(0, 6).map((p) => (
             <p key={p.slice(0, 40)}>{p}</p>
           ))}
         </article>

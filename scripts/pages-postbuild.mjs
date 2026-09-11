@@ -23,7 +23,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUBLIC_DIR = join(ROOT, ".pages", "output", "static");
@@ -48,41 +48,24 @@ function walk(dir, out = []) {
   return out;
 }
 
-if (!existsSync(PUBLIC_DIR)) {
-  fail(`missing build output at ${PUBLIC_DIR} — run \`vite build --mode pages\` first.`);
-}
-
-const indexPath = join(PUBLIC_DIR, "index.html");
-if (!existsSync(indexPath)) {
-  fail(`no index.html in ${PUBLIC_DIR} — prerendering did not produce the home route.`);
-}
-
-const assetsDir = join(PUBLIC_DIR, "assets");
-const styleFiles = existsSync(assetsDir)
-  ? readdirSync(assetsDir).filter((name) => /^styles-.*\.css$/.test(name))
-  : [];
-if (styleFiles.length !== 1) {
-  fail(`expected exactly one assets/styles-*.css, found ${styleFiles.length}.`);
-}
-const stylesheet = `${BASE}assets/${styleFiles[0]}`;
-
-/** URL path the file will be served at, for og:url. */
-function urlPathFor(file) {
-  const rel = relative(PUBLIC_DIR, file).replaceAll("\\", "/");
+/** URL path a built file will be served at, for og:url. */
+export function urlPathFor(relPath) {
+  const rel = relPath.replaceAll("\\", "/");
   if (rel === "index.html") return "/";
   if (rel.endsWith("/index.html")) return `/${rel.slice(0, -"index.html".length)}`;
   return `/${rel}`;
 }
 
-function rebaseRootUrls(html) {
-  // Vite-processed URLs already start with BASE; skip them to avoid doubling.
+/** Prefix bare root-absolute URLs with BASE; leave external/based ones alone. */
+export function rebaseRootUrls(html) {
   return html.replace(/(href|src|content)="(\/[^"]*)"/g, (match, attr, url) => {
     if (url.startsWith("//") || url.startsWith(BASE)) return match;
     return `${attr}="${BASE}${url.slice(1)}"`;
   });
 }
 
-function injectShareMeta(html, urlPath) {
+/** Add Open Graph/Twitter tags derived from the prerendered document. */
+export function injectShareMeta(html, urlPath) {
   if (html.includes('property="og:title"')) return html;
   const title = html.match(/<title>([^<]*)<\/title>/)?.[1] || APP_NAME;
   const description =
@@ -103,44 +86,68 @@ function injectShareMeta(html, urlPath) {
   return html.replace("</head>", `${tags}</head>`);
 }
 
-let processed = 0;
-for (const file of walk(PUBLIC_DIR)) {
-  const html = readFileSync(file, "utf8");
-  const updated = injectShareMeta(
-    rebaseRootUrls(html).replace(
-      /href="[^"]*?\/assets\/styles-[^"]*?\.css"/g,
-      `href="${stylesheet}"`,
-    ),
-    urlPathFor(file),
-  );
-  if (updated !== html) {
-    writeFileSync(file, updated);
-    processed += 1;
+function main() {
+  if (!existsSync(PUBLIC_DIR)) {
+    fail(`missing build output at ${PUBLIC_DIR} — run \`vite build --mode pages\` first.`);
   }
+
+  const indexPath = join(PUBLIC_DIR, "index.html");
+  if (!existsSync(indexPath)) {
+    fail(`no index.html in ${PUBLIC_DIR} — prerendering did not produce the home route.`);
+  }
+
+  const assetsDir = join(PUBLIC_DIR, "assets");
+  const styleFiles = existsSync(assetsDir)
+    ? readdirSync(assetsDir).filter((name) => /^styles-.*\.css$/.test(name))
+    : [];
+  if (styleFiles.length !== 1) {
+    fail(`expected exactly one assets/styles-*.css, found ${styleFiles.length}.`);
+  }
+  const stylesheet = `${BASE}assets/${styleFiles[0]}`;
+
+  let processed = 0;
+  for (const file of walk(PUBLIC_DIR)) {
+    const html = readFileSync(file, "utf8");
+    const updated = injectShareMeta(
+      rebaseRootUrls(html).replace(
+        /href="[^"]*?\/assets\/styles-[^"]*?\.css"/g,
+        `href="${stylesheet}"`,
+      ),
+      urlPathFor(relative(PUBLIC_DIR, file)),
+    );
+    if (updated !== html) {
+      writeFileSync(file, updated);
+      processed += 1;
+    }
+  }
+
+  writeFileSync(join(PUBLIC_DIR, "404.html"), readFileSync(indexPath, "utf8"));
+
+  const manifest = {
+    name: APP_NAME,
+    short_name: APP_NAME,
+    id: BASE,
+    start_url: BASE,
+    scope: BASE,
+    display: "standalone",
+    background_color: THEME,
+    theme_color: THEME,
+    icons: [
+      { src: `${BASE}__grok/icon-180.png`, sizes: "180x180", type: "image/png" },
+      { src: `${BASE}favicon.svg`, sizes: "any", type: "image/svg+xml" },
+    ],
+  };
+  const grokDir = join(PUBLIC_DIR, "__grok");
+  mkdirSync(grokDir, { recursive: true });
+  writeFileSync(join(grokDir, "manifest.webmanifest"), JSON.stringify(manifest, null, 2));
+
+  writeFileSync(join(PUBLIC_DIR, ".nojekyll"), "");
+
+  console.log(
+    `[pages-postbuild] patched ${processed} html file(s), wrote 404.html + PWA manifest + .nojekyll into ${PUBLIC_DIR}`,
+  );
 }
 
-writeFileSync(join(PUBLIC_DIR, "404.html"), readFileSync(indexPath, "utf8"));
-
-const manifest = {
-  name: APP_NAME,
-  short_name: APP_NAME,
-  id: BASE,
-  start_url: BASE,
-  scope: BASE,
-  display: "standalone",
-  background_color: THEME,
-  theme_color: THEME,
-  icons: [
-    { src: `${BASE}__grok/icon-180.png`, sizes: "180x180", type: "image/png" },
-    { src: `${BASE}favicon.svg`, sizes: "any", type: "image/svg+xml" },
-  ],
-};
-const grokDir = join(PUBLIC_DIR, "__grok");
-mkdirSync(grokDir, { recursive: true });
-writeFileSync(join(grokDir, "manifest.webmanifest"), JSON.stringify(manifest, null, 2));
-
-writeFileSync(join(PUBLIC_DIR, ".nojekyll"), "");
-
-console.log(
-  `[pages-postbuild] patched ${processed} html file(s), wrote 404.html + PWA manifest + .nojekyll into ${PUBLIC_DIR}`,
-);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

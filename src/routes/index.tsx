@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ProductCard } from "@/components/product-card";
 import { CatalogImage } from "@/components/catalog-image";
 import {
@@ -8,7 +9,11 @@ import {
   SECTOR_ORDER,
   type CatalogFamily,
 } from "@/lib/catalog";
-import { useCatalog } from "@/lib/catalog-store";
+import {
+  loadAllDetails,
+  useCatalog,
+  type ItemDetail,
+} from "@/lib/catalog-store";
 import { cn } from "@/lib/utils";
 
 type Search = { q?: string; sector?: string };
@@ -24,8 +29,22 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { q, sector } = Route.useSearch();
   const { catalog, ready } = useCatalog();
+  const [details, setDetails] = useState<Record<string, ItemDetail> | null>(null);
 
-  const items = searchItems(catalog.items, q ?? "");
+  // Body/FAQ text lives in a separate chunk: metadata results show instantly,
+  // then full-text matches appear once the chunk arrives.
+  useEffect(() => {
+    if (!q || details) return;
+    let active = true;
+    void loadAllDetails().then((loaded) => {
+      if (active) setDetails(loaded);
+    });
+    return () => {
+      active = false;
+    };
+  }, [q, details]);
+
+  const items = searchItems(catalog.items, q ?? "", details ?? undefined);
   const filtered = sector ? items.filter((i) => i.sector === sector) : items;
   const products = filtered.filter((i) => i.bucket === "products");
   const families = catalog.families.filter((f) =>

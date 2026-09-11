@@ -5,9 +5,13 @@ import { ProductCard } from "@/components/product-card";
 import { CatalogImage } from "@/components/catalog-image";
 import { SpecTable } from "@/components/spec-table";
 import { kindLabel } from "@/lib/catalog";
-import { findItem, useItem } from "@/lib/catalog-store";
+import { findItem, loadItemDetail, useItem } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/item/$family/$slug")({
+  loader: async ({ params }) => {
+    const entry = findItem(params.family, params.slug);
+    return entry ? await loadItemDetail(entry.id) : undefined;
+  },
   head: ({ params }) => {
     const item = findItem(params.family, params.slug);
     return {
@@ -24,6 +28,7 @@ export const Route = createFileRoute("/item/$family/$slug")({
 
 function ItemPage() {
   const { family, slug } = Route.useParams();
+  const detail = Route.useLoaderData();
   const { item, catalog, isLoading } = useItem(family, slug);
 
   if (!item) {
@@ -111,22 +116,22 @@ function ItemPage() {
         </section>
       ) : null}
 
-      {item.body ? (
+      {detail?.body ? (
         <section className="space-y-3">
           <h2 className="font-display text-2xl font-semibold">Overview</h2>
           <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-muted">
-            {item.body.split("\n\n").map((p, i) => (
+            {detail.body.split("\n\n").map((p, i) => (
               <p key={i}>{p}</p>
             ))}
           </div>
         </section>
       ) : null}
 
-      {item.faqs.length ? (
+      {detail?.faqs?.length ? (
         <section className="space-y-3">
           <h2 className="font-display text-2xl font-semibold">FAQ</h2>
           <div className="space-y-2">
-            {item.faqs.map((f) => (
+            {detail.faqs.map((f) => (
               <details
                 key={f.q}
                 className="rounded-xl bg-surface px-4 py-3 shadow-card"

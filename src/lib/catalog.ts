@@ -40,8 +40,10 @@ export type CatalogItem = {
   heroFit?: "cover" | "contain";
   highlights: string[];
   specs: SpecRow[];
-  faqs: { q: string; a: string }[];
-  body: string;
+  /** Loaded lazily from `catalog-detail.json` on item/family pages. */
+  faqs?: { q: string; a: string }[];
+  /** Loaded lazily from `catalog-detail.json` on item/family pages. */
+  body?: string;
   headings: string[];
   related: RelatedProduct[];
   files: CatalogFile[];
@@ -113,7 +115,10 @@ export function fileHref(file: CatalogFile) {
  */
 export function assetHref(path?: string) {
   if (!path || !path.startsWith("/") || path.startsWith("//")) return path;
-  return import.meta.env.BASE_URL.replace(/\/$/, "") + path;
+  // `?.` keeps the helper callable from plain Node (tests), where import.meta.env
+  // does not exist; Vite always defines it in app builds.
+  const base = import.meta.env?.BASE_URL ?? "/";
+  return base.replace(/\/$/, "") + path;
 }
 
 export function prettyFamily(family: CatalogFamily | { id: string; label: string }) {
@@ -152,11 +157,26 @@ export function isNamedSpec(row: SpecRow): row is { name: string; value: string 
   return "name" in row && "value" in row && Object.keys(row).length <= 4;
 }
 
-export function searchItems(items: CatalogItem[], q: string) {
+/** Lazily loaded per-item payload from `catalog-detail.json`. */
+export type ItemDetail = {
+  body?: string;
+  faqs?: { q: string; a: string }[];
+};
+
+/**
+ * Search all metadata plus the lazily loaded body/FAQ text when it is
+ * available; callers without details get the fast metadata-only match set.
+ */
+export function searchItems(
+  items: CatalogItem[],
+  q: string,
+  details?: Record<string, ItemDetail>,
+) {
   const needle = q.trim().toLowerCase();
   if (!needle) return items;
   const parts = needle.split(/\s+/).filter(Boolean);
   return items.filter((item) => {
+    const detail = details?.[item.id];
     const hay = [
       item.title,
       item.h1,
@@ -164,9 +184,11 @@ export function searchItems(items: CatalogItem[], q: string) {
       item.familyLabel,
       item.kind,
       item.slug,
-      item.body,
       item.highlights.join(" "),
+      item.specs.map((row) => Object.values(row).join(" ")).join(" "),
       item.files.map((f) => f.label).join(" "),
+      detail?.body ?? "",
+      (detail?.faqs ?? []).map((f) => `${f.q} ${f.a}`).join(" "),
     ]
       .join(" ")
       .toLowerCase();
