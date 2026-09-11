@@ -38,6 +38,8 @@ Scraped on 2026-09-10 from the public
   on demand by item/family pages and full-text search). Run
   `npm run catalog:split` after re-scraping to regenerate them from
   `src/data/catalog.json`.
+- Hero images are served as WebP; `scripts/optimize-catalog-images.py`
+  (requires Pillow) re-encodes them and repoints the catalogs after a scrape.
 - Scraper: [`scripts/crawl-siemens-energy.py`](scripts/crawl-siemens-energy.py)
   plus [`scripts/catalog_images.py`](scripts/catalog_images.py). Kept for
   transparency; not required to run the app.

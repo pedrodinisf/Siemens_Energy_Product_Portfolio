@@ -92,6 +92,7 @@ function ItemPage() {
                 src={img}
                 alt={item.title}
                 fit={item.heroFit === "contain" ? "contain" : "cover"}
+                priority
               />
             </div>
           </div>

@@ -8,12 +8,15 @@ export function CatalogImage({
   fit = "cover",
   className,
   imgClassName,
+  priority = false,
 }: {
   src?: string;
   alt: string;
   fit?: "cover" | "contain";
   className?: string;
   imgClassName?: string;
+  /** Above-the-fold images load eagerly; everything else defers. */
+  priority?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const contain = fit === "contain";
@@ -47,6 +50,9 @@ export function CatalogImage({
         src={resolved}
         alt={alt}
         onError={() => setFailed(true)}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={priority ? "high" : undefined}
         className={cn(
           "h-full w-full",
           contain
