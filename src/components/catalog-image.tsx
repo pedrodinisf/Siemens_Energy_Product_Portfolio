@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { assetHref } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 
 export function CatalogImage({
@@ -16,8 +17,9 @@ export function CatalogImage({
 }) {
   const [failed, setFailed] = useState(false);
   const contain = fit === "contain";
+  const resolved = assetHref(src);
 
-  if (!src || failed) {
+  if (!resolved || failed) {
     const label = alt.replace(/[-_]/g, " ").slice(0, 22);
     return (
       <div
@@ -42,7 +44,7 @@ export function CatalogImage({
       )}
     >
       <img
-        src={src}
+        src={resolved}
         alt={alt}
         onError={() => setFailed(true)}
         className={cn(

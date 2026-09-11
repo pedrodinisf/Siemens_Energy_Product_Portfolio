@@ -102,8 +102,18 @@ export function familyPath(id: string) {
 }
 
 export function fileHref(file: CatalogFile) {
-  if (file.downloaded && file.publicPath) return file.publicPath;
+  if (file.downloaded && file.publicPath) return assetHref(file.publicPath);
   return file.url;
+}
+
+/**
+ * Resolve a root-relative asset path (e.g. `/catalog/files/x.pdf`) against the
+ * Vite base. `/` on dev/Vercel, `/Siemens_Energy_Product_Portfolio/` on the
+ * GitHub Pages build. Remote and protocol-relative URLs pass through untouched.
+ */
+export function assetHref(path?: string) {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return path;
+  return import.meta.env.BASE_URL.replace(/\/$/, "") + path;
 }
 
 export function prettyFamily(family: CatalogFamily | { id: string; label: string }) {
