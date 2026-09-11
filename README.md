@@ -30,11 +30,12 @@ Scraped on 2026-09-10 from the public
 
 - 850 files discovered; 637 archived. Small files are served from this repo,
   larger ones link to the Siemens Energy asset CDN.
-- The scrape is preserved in [`data/siemens-energy/`](data/siemens-energy/) —
-  one folder per page with a `README.md`, `product.json`, hero image, and
-  `files/`. The app reads two generated files: `src/data/catalog-index.json`
-  (metadata, bundled with the app) and `src/data/catalog-detail.json` (body and
-  FAQ text, loaded on demand by item/family pages and full-text search). Run
+- The full scrape is kept locally in `data/siemens-energy/` — one folder per
+  page with a `README.md`, `product.json`, hero image, and `files/`. It is not
+  tracked in git (the repo stays lean); regenerate it with the scraper. The app
+  reads two generated files: `src/data/catalog-index.json` (metadata, bundled
+  with the app) and `src/data/catalog-detail.json` (body and FAQ text, loaded
+  on demand by item/family pages and full-text search). Run
   `npm run catalog:split` after re-scraping to regenerate them from
   `src/data/catalog.json`.
 - Scraper: [`scripts/crawl-siemens-energy.py`](scripts/crawl-siemens-energy.py)
@@ -58,7 +59,7 @@ Energy. Trademarks belong to their owners.
 src/                  app code (routes, components, catalog store)
 src/data/catalog.json full catalog (source of truth)
 public/catalog/       locally served images and documents
-data/siemens-energy/  full scrape archive (dossiers + files)
+data/siemens-energy/  full scrape archive (local only, not tracked in git)
 scripts/              scraper, build helpers, QA scripts
 .github/workflows/    GitHub Pages deployment
 screenshots/          UI reference shots

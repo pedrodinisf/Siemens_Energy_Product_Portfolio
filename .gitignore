@@ -2,6 +2,7 @@ node_modules/
 .output/
 .pages/
 .vercel/
+data/
 .project_id
 .github_repo
 .env
