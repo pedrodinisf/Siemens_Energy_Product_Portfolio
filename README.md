@@ -56,13 +56,13 @@ Energy. Trademarks belong to their owners.
 
 ```
 src/                  app code (routes, components, catalog store)
-src/data/catalog.json bundled catalog index
+src/data/catalog.json full catalog (source of truth)
 public/catalog/       locally served images and documents
 data/siemens-energy/  full scrape archive (dossiers + files)
 scripts/              scraper, build helpers, QA scripts
 .github/workflows/    GitHub Pages deployment
 screenshots/          UI reference shots
-server/, migrations/  platform plumbing from the original app-builder template
+server/               platform PWA middleware (install page, head tags)
 .grok/                app-builder workspace tooling
 ```
 
@@ -108,6 +108,9 @@ Deployment happens automatically: pushing to `main` runs
 
 - The default build targets Vercel via the Nitro preset; GitHub Pages is an
   additional static target selected only by `--mode pages`.
+- The app is fully static. The original app-builder template's opt-in auth,
+  database, connector, and multiplayer scaffolding has been removed along with
+  its dependencies.
 - On-host PWA/branding chrome served by the original platform runtime (install
   page, extension script) is not part of the static Pages build.
 - Fonts (Barlow Condensed, Source Sans 3 — SIL Open Font License) are

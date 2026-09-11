@@ -6,7 +6,6 @@
  */
 
 import { z } from "zod";
-import { CONNECTOR_TOKEN_READY_EVENT } from "./app-data/types";
 import { resolveParentEmbedderOrigin } from "./preview-embedder-origin";
 
 export {
@@ -17,6 +16,9 @@ export {
 
 export const PREVIEW_BRIDGE_CHANNEL = "grok-preview-bridge" as const;
 export const PREVIEW_BRIDGE_VERSION = 1 as const;
+
+/** Dispatched when the host has a connector token for the guest. */
+const CONNECTOR_TOKEN_READY_EVENT = "grok:connector-token-ready";
 
 const EnvelopeSchema = z.object({
   channel: z.literal(PREVIEW_BRIDGE_CHANNEL),
