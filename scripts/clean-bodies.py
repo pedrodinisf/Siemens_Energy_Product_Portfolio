@@ -102,9 +102,14 @@ CTA_EXACT_RE = re.compile(
 # enough to escape the exact blocklist.
 FILLER_RE = re.compile(
     r"^(discover more|learn more about|find out more|for more information|"
-    r"please contact|contact us|follow us|subscribe|sign up)\b",
+    r"please contact|contact us|follow us|subscribe|sign up|"
+    r"click on|click the|tap on|tap the|hover over)\b",
     re.IGNORECASE,
 )
+
+# Card labels whose only body text is a link: "Peak and Part Load Learn more".
+LABEL_CTA_RE = re.compile(r"^[^.!?]{1,70}\s+(learn|read)\s+more[.!]?$", re.IGNORECASE)
+CTA_LEAD_RE = re.compile(r"^(learn|read)\s+more\b.{0,220}$", re.IGNORECASE)
 
 IMAGE_RE = re.compile(
     r"^\((image|photo|picture|figure|source|graphic)s?\b[^)]*\)\.?$",
@@ -133,18 +138,19 @@ def is_cta(text: str) -> bool:
     return bool(CTA_RE.match(stripped) or CTA_EXACT_RE.match(stripped))
 
 
-def clean_list(block: dict) -> dict | None:
+def clean_list(block: dict, seen: set[str]) -> dict | None:
     items = []
-    seen = set()
     for entry in block.get("items") or []:
         if not isinstance(entry, dict):
             continue
         text = normalize(entry.get("text"))
-        if not text or text.lower() in seen:
+        key = text.lower()
+        if not text or key in seen:
             continue
-        seen.add(text.lower())
+        if is_cta(text) or FILLER_RE.match(text) or LABEL_CTA_RE.match(text) or CTA_LEAD_RE.match(text):
+            continue
+        seen.add(key)
         items.append(text)
-    items = [item for item in items if not is_cta(item)]
     if not items:
         return None
     return {"type": "list", "ordered": bool(block.get("ordered")), "items": items}
@@ -179,13 +185,17 @@ def clean_blocks(blocks: list, title: str) -> tuple[list, Counter]:
                 stats["section"] += 1
                 drop_level = level_no
                 continue
+            if is_cta(text) or FILLER_RE.match(text) or LABEL_CTA_RE.match(text) or CTA_LEAD_RE.match(text):
+                stats["cta-heading"] += 1
+                drop_level = level_no
+                continue
             out.append({"type": "heading", "level": level_no, "text": text})
             continue
         if kind == "list":
             if drop_level is not None:
                 stats["section-item"] += 1
                 continue
-            cleaned = clean_list(block)
+            cleaned = clean_list(block, seen_text)
             if not cleaned:
                 stats["empty-list"] += 1
                 continue
@@ -213,7 +223,7 @@ def clean_blocks(blocks: list, title: str) -> tuple[list, Counter]:
         if IMAGE_RE.match(text) or URL_RE.match(text):
             stats["image"] += 1
             continue
-        if is_cta(text) or FILLER_RE.match(text):
+        if is_cta(text) or FILLER_RE.match(text) or LABEL_CTA_RE.match(text) or CTA_LEAD_RE.match(text):
             stats["cta"] += 1
             continue
         if text.lower() in seen_text:
@@ -248,7 +258,20 @@ def clean_blocks(blocks: list, title: str) -> tuple[list, Counter]:
                 stats["orphan-heading"] += 1
                 changed = True
                 break
-    return out, stats
+    # A heading repeated verbatim as its lead paragraph is a scrape artifact.
+    deduped = []
+    for index, block in enumerate(out):
+        nxt = out[index + 1] if index + 1 < len(out) else None
+        if (
+            block.get("type") == "heading"
+            and nxt is not None
+            and nxt.get("type") == "paragraph"
+            and normalize(nxt.get("text", "")).lower() == block["text"].lower()
+        ):
+            stats["duplicate-heading"] += 1
+            continue
+        deduped.append(block)
+    return deduped, stats
 
 
 def old_body_blocks(body: object) -> list:
