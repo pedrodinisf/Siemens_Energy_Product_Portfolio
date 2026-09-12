@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BodyBlocks } from "@/components/body-blocks";
 import { ProductCard } from "@/components/product-card";
-import { FileRow } from "@/components/file-row";
+import { DocumentTable } from "@/components/document-table";
 import { prettyFamily } from "@/lib/catalog";
+import { itemDocuments } from "@/lib/documents";
 import {
   findFamily,
   findItem,
@@ -40,7 +41,14 @@ function FamilyPage() {
   const items = catalog.items.filter((i) => i.family === familyId);
   const overview = items.find((i) => i.slug === "_overview");
   const rest = items.filter((i) => i.slug !== "_overview");
-  const files = items.flatMap((i) => i.files);
+  const docGroups = [
+    ...(overview && overview.files.length
+      ? [{ owner: overview, label: "Family overview" }]
+      : []),
+    ...rest
+      .filter((i) => i.files.length)
+      .map((i) => ({ owner: i, label: i.title })),
+  ];
 
   if (!isLoading && items.length === 0) {
     return (
@@ -86,14 +94,34 @@ function FamilyPage() {
         </div>
       ) : null}
 
-      {files.length ? (
-        <section className="space-y-3">
+      {docGroups.length ? (
+        <section className="space-y-6">
           <h2 className="font-display text-2xl font-semibold">Documents</h2>
-          <div className="grid gap-2 md:grid-cols-2">
-            {files.slice(0, 24).map((f) => (
-              <FileRow key={f.url} file={f} />
-            ))}
-          </div>
+          {docGroups.map(({ owner, label }) => {
+            const rows = itemDocuments(owner);
+            return (
+              <div key={owner.id} className="space-y-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="font-display text-lg font-semibold">
+                    <Link
+                      to="/item/$family/$slug"
+                      params={{ family: owner.family, slug: owner.slug }}
+                      className="hover:text-accent"
+                    >
+                      {label}
+                    </Link>
+                  </h3>
+                  <span className="text-xs tabular-nums text-subtle">
+                    {rows.length} document{rows.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <DocumentTable
+                  rows={rows}
+                  caption={`Documents for ${label}`}
+                />
+              </div>
+            );
+          })}
         </section>
       ) : null}
     </div>

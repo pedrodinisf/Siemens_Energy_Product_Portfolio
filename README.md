@@ -1,7 +1,7 @@
 # Fieldbook — Siemens Energy Product Portfolio
 
 A searchable static library of publicly published Siemens Energy product
-material: 244 catalog pages, 67 families, and 850 brochures, datasheets, and
+material: 244 catalog pages, 67 families, and 646 brochures, datasheets, and
 papers, with local copies of the smaller documents.
 
 **Live site:** https://pedrodinisf.github.io/Siemens_Energy_Product_Portfolio/
@@ -10,10 +10,14 @@ papers, with local copies of the smaller documents.
 
 ## What it does
 
-- **Search** everything — titles, descriptions, specs, FAQs, and file names.
+- **Search** everything — titles, descriptions, specs, FAQs, document titles,
+  and file names.
 - **Browse** by sector, family, or the global file index.
-- **Product dossiers** with technical data tables, FAQs, related entries, and
-  direct download links (local copies where available, source URLs otherwise).
+- **Product dossiers** with technical data tables, FAQs, related entries, and a
+  document table (title, type, language, size, source) with direct download
+  links — local copies where available, source URLs otherwise.
+- **Documents view** with filters for type, language and source across every
+  document in the library.
 - **Papers** view for white papers and technical papers.
 
 ## Data
@@ -28,8 +32,17 @@ Scraped on 2026-09-10 from the public
 | Solutions | 30 |
 | Publications | 61 |
 
-- 850 files discovered; 637 archived. Small files are served from this repo,
-  larger ones link to the Siemens Energy asset CDN.
+- 646 unique documents discovered; 345 saved locally. Small files are served
+  from this repo, larger ones link to the Siemens Energy asset CDN. Ten source
+  files have been removed upstream and are listed as unavailable.
+- Document rows carry a real title, type, language, size, source and — where
+  the source page publishes one — a date. Titles and context come from the
+  source pages (`scripts/refetch-documents.py`), the files themselves
+  (`scripts/fetch-document-metadata.py`, PyMuPDF + Office core properties) and
+  the merge pass (`scripts/build-document-metadata.mjs`), which writes
+  `src/data/document-metadata.json` and enriches `catalog.json`. Asset health,
+  sizes and local-copy integrity come from `scripts/probe-assets.mjs` and
+  `scripts/apply-asset-fixes.mjs`.
 - The full scrape is kept locally in `data/siemens-energy/` — one folder per
   page with a `README.md`, `product.json`, hero image, and `files/`. It is not
   tracked in git (the repo stays lean); regenerate it with the scraper. The app
@@ -62,7 +75,7 @@ src/                  app code (routes, components, catalog store)
 src/data/catalog.json full catalog (source of truth)
 public/catalog/       locally served images and documents
 data/siemens-energy/  full scrape archive (local only, not tracked in git)
-scripts/              scraper, build helpers, QA scripts
+scripts/              scraper, document-metadata pipeline, build helpers, QA scripts
 .github/workflows/    GitHub Pages deployment
 screenshots/          UI reference shots
 server/               platform PWA middleware (install page, head tags)
@@ -85,6 +98,25 @@ npm run typecheck
 npm run lint
 npm test
 ```
+
+Document pipeline (optional; only after a re-scrape): the Python passes need a
+virtualenv with PyMuPDF and pypdf.
+
+```sh
+python3 -m venv .venv-pages
+.venv-pages/bin/pip install pymupdf pypdf     # Windows: .venv-pages\Scripts\pip
+
+node scripts/probe-assets.mjs                 # live/dead + sizes (data/…/asset-probe.json)
+node scripts/apply-asset-fixes.mjs            # repair URLs, canonical local copies
+python3 scripts/refetch-documents.py          # page titles/types/table data
+.venv-pages/bin/python scripts/fetch-document-metadata.py   # PDF/Office metadata
+node scripts/build-document-metadata.mjs      # merge + catalog:split
+node scripts/document-ui-review.mjs           # browser QA on the built output
+```
+
+Browser QA for the document views runs against the built Pages output (build
+with `npm run build:pages` first) and writes screenshots plus a verdict to
+`data/siemens-energy/qa/`.
 
 ## Builds
 

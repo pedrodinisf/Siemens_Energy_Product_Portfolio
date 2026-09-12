@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
-import { FileRow } from "@/components/file-row";
+import { DocumentTable } from "@/components/document-table";
 import { ProductCard } from "@/components/product-card";
 import { CatalogImage } from "@/components/catalog-image";
 import { SpecTable } from "@/components/spec-table";
 import { BodyBlocks } from "@/components/body-blocks";
 import { kindLabel } from "@/lib/catalog";
+import { itemDocuments } from "@/lib/documents";
 import { findItem, loadItemDetail, useItem } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/item/$family/$slug")({
@@ -110,11 +111,10 @@ function ItemPage() {
       {item.files.length ? (
         <section className="space-y-3">
           <h2 className="font-display text-2xl font-semibold">Downloads</h2>
-          <div className="grid gap-2 md:grid-cols-2">
-            {item.files.map((f) => (
-              <FileRow key={f.url + f.filename} file={f} />
-            ))}
-          </div>
+          <DocumentTable
+            rows={itemDocuments(item)}
+            caption={`Documents for ${item.title}`}
+          />
         </section>
       ) : null}
 

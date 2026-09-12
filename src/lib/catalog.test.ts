@@ -101,7 +101,7 @@ test("searchItems matches metadata, specs and file labels with AND semantics", (
           rows: [{ label: "Power output", values: ["62.5 MW(e)"] }],
         },
       ],
-      files: [{ url: "https://x", label: "Feature poster", kind: "poster", filename: "p.pdf" }],
+      files: [{ url: "https://x", label: "Download", kind: "poster", filename: "p.pdf", title: "Feature poster" }],
     }),
     item({ id: "steam-turbines/sst-600", title: "SST-600 steam turbine" }),
   ];
@@ -126,6 +126,28 @@ test("bodyText flattens headings, paragraphs and list items", () => {
   assert.match(text, /robust design/);
   assert.match(text, /High availability/);
   assert.equal(bodyText(undefined), "");
+});
+
+test("searchItems matches enriched document titles, types and languages", () => {
+  const items = [
+    item({
+      id: "grid-products/voltage-regulators",
+      files: [
+        {
+          url: "https://assets.example.com/dam/28e77a7c/JFR-pdf.pdf",
+          label: "Download",
+          kind: "pdf",
+          filename: "JFRsingle-phaseVoltageRegulator-pdf.pdf",
+          title: "JFR single-phase voltage regulator",
+          docType: "flyer",
+          lang: "EN",
+        },
+      ],
+    }),
+  ];
+  assert.equal(searchItems(items, "single-phase voltage regulator").length, 1);
+  assert.equal(searchItems(items, "flyer").length, 1);
+  assert.equal(searchItems(items, "download").length, 0);
 });
 
 test("searchItems searches lazily loaded body text only when provided", () => {

@@ -8,6 +8,15 @@ export type CatalogFile = {
   downloaded?: boolean;
   bytes?: number;
   archiveOnly?: boolean;
+  /** Enriched display metadata (see `scripts/build-document-metadata.mjs`). */
+  title?: string;
+  docType?: string;
+  lang?: string;
+  format?: string;
+  titleSource?: string;
+  status?: "live" | "dead";
+  date?: string;
+  pages?: number;
 };
 
 export type RelatedProduct = {
@@ -172,6 +181,31 @@ export function kindLabel(kind: string) {
   return kind.replace(/-/g, " ");
 }
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  brochure: "Brochure",
+  flyer: "Flyer",
+  datasheet: "Datasheet",
+  "white-paper": "White paper",
+  "technical-paper": "Technical paper",
+  manual: "Manual",
+  poster: "Poster",
+  certificate: "Certificate",
+  policy: "Policy",
+  article: "Article",
+  "press-release": "Press release",
+  "case-study": "Case study",
+  catalog: "Catalog",
+  presentation: "Presentation",
+  spreadsheet: "Spreadsheet",
+  document: "Document",
+  other: "Document",
+};
+
+export function docTypeLabel(docType?: string) {
+  if (!docType) return DOC_TYPE_LABELS.other;
+  return DOC_TYPE_LABELS[docType] ?? docType.replace(/-/g, " ");
+}
+
 /** Flatten every spec cell into one searchable string. */
 export function specText(specs: SpecTable[]) {
   return specs
@@ -223,7 +257,9 @@ export function searchItems(
       item.slug,
       item.highlights.join(" "),
       specText(item.specs),
-      item.files.map((f) => f.label).join(" "),
+      item.files
+        .map((f) => [f.title, f.filename, f.docType, f.lang].filter(Boolean).join(" "))
+        .join(" "),
       bodyText(bodies?.[item.id]),
     ]
       .join(" ")

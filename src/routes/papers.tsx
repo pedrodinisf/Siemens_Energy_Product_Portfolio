@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProductCard } from "@/components/product-card";
-import { FileRow } from "@/components/file-row";
+import { DocumentTable } from "@/components/document-table";
+import { uniqueDocuments } from "@/lib/documents";
 import { useCatalog } from "@/lib/catalog-store";
 
 export const Route = createFileRoute("/papers")({
@@ -15,7 +16,7 @@ function PapersPage() {
       i.kind === "white-paper" ||
       i.kind === "technical-paper",
   );
-  const files = papers.flatMap((p) => p.files);
+  const documents = uniqueDocuments(papers);
 
   return (
     <div className="space-y-8">
@@ -27,19 +28,19 @@ function PapersPage() {
           White papers & technical notes
         </h1>
         <p className="mt-3 max-w-2xl text-muted">
-          {papers.length} publication pages from the Siemens Energy library,
-          with direct file links where the site published them.
+          {papers.length} publication pages from the Siemens Energy library,{" "}
+          {documents.length} of them with direct file links.
         </p>
       </header>
 
-      {files.length ? (
+      {documents.length ? (
         <section className="space-y-3">
-          <h2 className="font-display text-2xl font-semibold">Files</h2>
-          <div className="grid gap-2 md:grid-cols-2">
-            {files.slice(0, 40).map((f) => (
-              <FileRow key={f.url} file={f} />
-            ))}
-          </div>
+          <h2 className="font-display text-2xl font-semibold">Documents</h2>
+          <DocumentTable
+            rows={documents}
+            showProduct
+            caption="White papers and technical notes"
+          />
         </section>
       ) : null}
 
