@@ -27,6 +27,10 @@ const OUT_DIR = join(ROOT, "data", "siemens-energy", "qa");
 const BASE = "/Siemens_Energy_Product_Portfolio";
 const PORT = 8095;
 
+const args = process.argv.slice(2);
+const originIndex = args.indexOf("--origin");
+const ORIGIN = originIndex >= 0 ? (args[originIndex + 1] || "").replace(/\/$/, "") : "";
+
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -123,15 +127,16 @@ const require = createRequire(join(ROOT, "package.json"));
 const { chromium } = require("playwright");
 
 async function main() {
-  if (!existsSync(STATIC)) {
+  if (!ORIGIN && !existsSync(STATIC)) {
     console.error("built output missing: run npm run build:pages first");
     process.exit(1);
   }
   mkdirSync(OUT_DIR, { recursive: true });
-  const server = await serve();
+  const server = ORIGIN ? null : await serve();
   const browser = await chromium.launch({ channel: "chrome" });
   const findings = [];
   const results = [];
+  const root = ORIGIN || `http://127.0.0.1:${PORT}${BASE}`;
 
   for (const viewport of VIEWPORTS) {
     const context = await browser.newContext({
@@ -145,7 +150,7 @@ async function main() {
         if (message.type() === "error") consoleErrors.push(message.text());
       });
       page.on("pageerror", (error) => pageErrors.push(String(error)));
-      const url = `http://127.0.0.1:${PORT}${BASE}${route.path}`;
+      const url = `${root}${route.path}`;
       await page.goto(url, { waitUntil: "networkidle", timeout: 45000 });
       const body = await page.innerText("body");
       const overflow = await page.evaluate(
@@ -183,7 +188,7 @@ async function main() {
   }
 
   await browser.close();
-  server.close();
+  server?.close();
   const verdict = { ok: findings.length === 0, findings, results };
   writeFileSync(join(OUT_DIR, "verdict.json"), JSON.stringify(verdict, null, 2));
   console.log(JSON.stringify(verdict, null, 2));
